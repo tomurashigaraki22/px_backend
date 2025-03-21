@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            background: #fff;
+            padding: 20px;
+            margin: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .content h2 {
+            color: #e11d48;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        .user-info {
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #e11d48;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .alert-box {
+            background: #fff1f2;
+            border-left: 4px solid #e11d48;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 20px;
+            background: #e11d48;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 6px;
+            margin-top: 10px;
+            transition: background 0.3s ease;
+        }
+        .button:hover {
+            background: #c21838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>New Login Alert</h1>
+        </div>
+        <div class="content">
+            <h2>Hello {{username}}! 🔐</h2>
+            <p>We detected a new login to your PX Backend account.</p>
+            
+            <div class="user-info">
+                <table>
+                    <tr>
+                        <th>User ID</th>
+                        <th>Username</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>IP Address</th>
+                    </tr>
+                    <tr>
+                        <td>{{user_id}}</td>
+                        <td>{{username}}</td>
+                        <td>{{login_date}}</td>
+                        <td>{{login_time}}</td>
+                        <td>{{ip_address}}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="alert-box">
+                <p>If you didn't log in to your account, please secure it immediately.</p>
+            </div>
+            
+            <a href="#" class="button">Secure Your Account</a>
+        </div>
+    </div>
+</body>
+</html>

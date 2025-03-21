@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            background: #fff;
+            padding: 20px;
+            margin: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #6366f1, #a855f7, #3b82f6);
+            color: white;
+            padding: 30px;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            padding: 25px;
+        }
+        .welcome-text h2 {
+            color: #a855f7;
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+        .welcome-text p {
+            color: #4c4c4c;
+            font-size: 16px;
+        }
+        .user-info {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #a855f7, #6366f1);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(168, 85, 247, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to PX Backend!</h1>
+        </div>
+        <div class="content">
+            <div class="welcome-text">
+                <h2>Hello {{username}}! 🎉</h2>
+                <p>We're excited to have you join us. Your account has been successfully created.</p>
+            </div>
+            <div class="user-info">
+                <table>
+                    <tr>
+                        <th>User ID</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                    </tr>
+                    <tr>
+                        <td>{{user_id}}</td>
+                        <td>{{username}}</td>
+                        <td>{{email}}</td>
+                    </tr>
+                </table>
+            </div>
+            <a href="#" class="button">Access Your Account</a>
+        </div>
+    </div>
+</body>
+</html>
