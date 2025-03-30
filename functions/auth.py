@@ -44,6 +44,7 @@ def send_login_notification(user):
             "New Login Detected - PX Backend",
             recipients=[user['email']]
         )
+        print("Sending login notification now")
         msg.html = render_template(
             'login_notification.html',
             username=user['username'],
@@ -81,7 +82,7 @@ def login():
         token = generate_token(user)
         
         # Send login notification
-        # send_login_notification(user)
+        send_login_notification(user)
         
         return jsonify({
             "message": "Login successful",
@@ -124,8 +125,7 @@ def signup():
         # Generate token for new user
         token = generate_token(new_user)
         
-        # Send welcome email
-        # send_welcome_email(new_user)
+        send_welcome_email(new_user)
         
         return jsonify({
             "message": "Signup successful",
@@ -283,6 +283,138 @@ def get_user_transactions(user_id):
             "transactions": transactions
         })
     except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+def get_order_history(user_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT * FROM order_history 
+            WHERE user_id = %s 
+            ORDER BY created_at DESC
+        """, (user_id,))
+        
+        orders = cur.fetchall()
+        
+        # Format orders with specific keys
+        formatted_orders = []
+        for order in orders:
+            formatted_orders.append({
+                'id': order['id'],
+                'user_id': order['user_id'],
+                'order_id': order['order_id'],
+                'service_name': order['service_name'],
+                'link': order['link'],
+                'amount': float(order['amount']),
+                'status': order['status'],
+                'created_at': order['created_at'].strftime("%Y-%m-%d %H:%M:%S"),
+                'updated_at': order['updated_at'].strftime("%Y-%m-%d %H:%M:%S")
+            })
+        
+        return jsonify({
+            "status": "success",
+            "orders": formatted_orders
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+def create_order(data):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check if order_id already exists
+        cur.execute("SELECT id FROM order_history WHERE order_id = %s", (data['order_id'],))
+        if cur.fetchone():
+            raise Exception("Order ID already exists")
+        
+        # Validate status
+        valid_statuses = ['pending', 'completing', 'completed', 'cancelled']
+        if data['status'] not in valid_statuses:
+            raise Exception(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+        
+        # Check user balance if status requires payment
+        if data['status'] in ['pending', 'completed', 'completing']:
+            cur.execute("SELECT balance FROM users WHERE id = %s", (data['user_id'],))
+            user = cur.fetchone()
+            if not user:
+                raise Exception("User not found")
+                
+            if float(user['balance']) < float(data['amount']):
+                print(f"USER: {float(user['balance'])} {float(data['amount'])}")
+                raise Exception("Insufficient balance")
+            
+            # Deduct balance
+            new_balance = float(user['balance']) - float(data['amount'])
+            cur.execute("UPDATE users SET balance = %s WHERE id = %s", (new_balance, data['user_id']))
+            
+            # Record transaction
+            cur.execute("""
+                INSERT INTO transactions 
+                (user_id, type, amount, previous_balance, new_balance, status, description)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                data['user_id'],
+                'debit',
+                float(data['amount']),
+                float(user['balance']),
+                new_balance,
+                'completed',
+                f"Payment for order {data['order_id']}: {data['service_name']}"
+            ))
+            
+        # Insert new order
+        cur.execute("""
+            INSERT INTO order_history 
+            (user_id, order_id, service_name, link, amount, status)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            data['user_id'],
+            data['order_id'],
+            data['service_name'],
+            data['link'],
+            float(data['amount']),
+            data['status']
+        ))
+        
+        conn.commit()
+        
+        # Get the created order
+        cur.execute("SELECT * FROM order_history WHERE order_id = %s", (data['order_id'],))
+        order = cur.fetchone()
+        
+        return jsonify({
+            "status": "success",
+            "message": "Order created successfully",
+            "order": {
+                'id': order['id'],
+                'user_id': order['user_id'],
+                'order_id': order['order_id'],
+                'service_name': order['service_name'],
+                'link': order['link'],
+                'amount': float(order['amount']),
+                'status': order['status'],
+                'created_at': order['created_at'].strftime("%Y-%m-%d %H:%M:%S"),
+                'updated_at': order['updated_at'].strftime("%Y-%m-%d %H:%M:%S")
+            }
+        })
+    except Exception as e:
+        if conn:
+            conn.rollback()
         return jsonify({
             "status": "error",
             "message": str(e)

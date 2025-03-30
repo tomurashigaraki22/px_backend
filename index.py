@@ -82,6 +82,10 @@ def show_table(tablename):
 @app.route('/balance/update', methods=['POST'])
 def update_user_balance():
     try:
+        # Skip processing for CORS preflight requests
+        if request.method == 'OPTIONS':
+            return '', 200
+            
         data = request.get_json()
         if not data:
             return jsonify({"message": "No data provided", "status": 400}), 400
@@ -91,11 +95,30 @@ def update_user_balance():
         transaction_type = data.get('type')
         
         if not all([user_id, amount, transaction_type]):
-            print("Missing required fields: user_id, amount, and type")
+            print(f"Missing required fields: user_id, amount, and type: {user_id} {amount} {transaction_type}")
             return jsonify({
                 "message": "Missing required fields: user_id, amount, and type",
                 "status": 400
             }), 400
+        
+        # Add transaction reference check
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check for recent duplicate transaction within last 5 seconds
+        cur.execute("""
+            SELECT id FROM transactions 
+            WHERE user_id = %s 
+            AND amount = %s 
+            AND type = %s 
+            AND created_at >= NOW() - INTERVAL 5 SECOND
+        """, (user_id, amount, transaction_type))
+        
+        if cur.fetchone():
+            return jsonify({
+                "status": "success",
+                "message": "Transaction already processed"
+            }), 200
             
         return update_balance(user_id, float(amount), transaction_type)
         
@@ -147,6 +170,69 @@ def get_transactions(user_id):
             }), 400
             
         return get_user_transactions(user_id)
+        
+    except Exception as e:
+        return jsonify({"message": str(e), "status": 500}), 500
+
+@app.route('/orders/<int:user_id>', methods=['GET'])
+def get_user_orders(user_id):
+    try:
+        if not user_id:
+            return jsonify({
+                "message": "User ID is required",
+                "status": 400
+            }), 400
+            
+        return get_order_history(user_id)
+        
+    except Exception as e:
+        return jsonify({"message": str(e), "status": 500}), 500
+
+@app.route('/test-mail', methods=["GET", "POST"])
+def test_mail():
+    try:
+        msg = Message(
+            "Welcome to PXSM",
+            recipients=["devtomiwa9@gmail.com"]  # Replace with test email
+        )
+        msg.html = """
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #4a5568;">Welcome to PXSM! 👋</h2>
+            <p style="color: #718096;">This is a test email confirming that our mailing system is working correctly.</p>
+            <div style="background-color: #f7fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="color: #4a5568; margin: 0;">If you received this email, it means our email configuration is successful!</p>
+            </div>
+            <p style="color: #718096;">Best regards,<br>PXSM Team</p>
+        </div>
+        """
+        mail.send(msg)
+        return jsonify({
+            "status": "success",
+            "message": "Test email sent successfully"
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+@app.route('/orders/create', methods=['POST'])
+def create_new_order():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided", "status": 400}), 400
+            
+        required_fields = ['user_id', 'order_id', 'service_name', 'link', 'amount', 'status']
+        missing_fields = [field for field in required_fields if field not in data]
+        
+        if missing_fields:
+            return jsonify({
+                "message": f"Missing required fields: {', '.join(missing_fields)}",
+                "status": 400
+            }), 400
+            
+        return create_order(data)
         
     except Exception as e:
         return jsonify({"message": str(e), "status": 500}), 500

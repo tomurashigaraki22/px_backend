@@ -13,15 +13,15 @@ app = Flask(__name__, template_folder='../templates')
 CORS(app)
 
 # Configure mail settings
-app.config.update(
-    MAIL_SERVER='kepler11b.titanwebserver.com',
-    MAIL_PORT=465,
-    MAIL_USERNAME='pxsm@pxs.name.ng',
-    MAIL_PASSWORD='Pityboy@22',
-    MAIL_USE_SSL=True,
-    MAIL_USE_TLS=False,
-    MAIL_DEFAULT_SENDER='pxsm@pxs.name.ng'
-)
+app.config['MAIL_SERVER'] = 'mail.pxs.name.ng'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'pxsm@pxs.name.ng'
+app.config['MAIL_PASSWORD'] = 'Pityboy@22'
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_DEFAULT_SENDER'] = ('PXSM System', 'pxsm@pxs.name.ng')
+app.config['MAIL_MAX_EMAILS'] = None
+app.config['MAIL_ASCII_ATTACHMENTS'] = False
 
 # Initialize Flask-Mail
 mail = Mail(app)

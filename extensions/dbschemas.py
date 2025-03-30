@@ -38,6 +38,29 @@ def create_transactions_table(connection):
         cursor.execute(sql)
         connection.commit()
 
+def create_order_history_table(connection):
+    with connection.cursor() as cursor:
+        sql = """
+        CREATE TABLE IF NOT EXISTS order_history (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            order_id VARCHAR(100) NOT NULL UNIQUE,
+            service_name VARCHAR(255) NOT NULL,
+            link VARCHAR(255) NOT NULL,
+            amount DECIMAL(10, 2) NOT NULL,
+            status ENUM('pending', 'completing', 'completed', 'cancelled') DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            INDEX idx_user_id (user_id),
+            INDEX idx_order_id (order_id),
+            INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        """
+        cursor.execute(sql)
+        connection.commit()
+
 def init_database(connection):
     create_users_table(connection)
     create_transactions_table(connection)
+    create_order_history_table(connection)
