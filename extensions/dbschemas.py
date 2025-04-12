@@ -16,6 +16,38 @@ def create_users_table(connection):
         cursor.execute(sql)
         connection.commit()
 
+def column_exists(cursor, table_name, column_name):
+    cursor.execute("""
+        SELECT COUNT(*) as count FROM information_schema.COLUMNS
+        WHERE TABLE_NAME=%s AND COLUMN_NAME=%s
+    """, (table_name, column_name))
+    result = cursor.fetchone()
+    if result and 'count' in result:
+        return result['count'] > 0
+    return False
+
+def alter_users_table(connection):
+    try:
+        with connection.cursor() as cursor:
+            if not column_exists(cursor, "users", "agent_id"):
+                print("Adding agent_id column...")
+                cursor.execute("ALTER TABLE users ADD COLUMN agent_id VARCHAR(255) DEFAULT NULL;")
+            if not column_exists(cursor, "users", "is_agent"):
+                print("Adding is_agent column...")
+                cursor.execute("ALTER TABLE users ADD COLUMN is_agent BOOLEAN DEFAULT FALSE;")
+            if not column_exists(cursor, "users", "agent_password"):
+                print("Adding agent_password column...")
+                cursor.execute("ALTER TABLE users ADD COLUMN agent_password VARCHAR(255) DEFAULT NULL;")
+            connection.commit()
+            print("Users table altered successfully")
+
+    except Exception as e:
+        print(f"Error altering users table: {str(e)}")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error details: {repr(e)}")
+        connection.rollback()
+
+
 def create_transactions_table(connection):
     with connection.cursor() as cursor:
         sql = """
@@ -60,7 +92,50 @@ def create_order_history_table(connection):
         cursor.execute(sql)
         connection.commit()
 
+def create_agent_info_table(connection):
+    with connection.cursor() as cursor:
+        print("Creating agent_info table...")
+        sql = """
+        CREATE TABLE IF NOT EXISTS agent_info (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            agent_id VARCHAR(255) NOT NULL,
+            agent_user_id INT NOT NULL,
+            subscription_type ENUM('basic', 'premium') NOT NULL,
+            commission_rate DECIMAL(4, 2) NOT NULL,
+            subscription_amount DECIMAL(10, 2) NOT NULL,
+            is_paid BOOLEAN DEFAULT FALSE,
+            subscription_start_date TIMESTAMP NULL,
+            subscription_end_date TIMESTAMP NULL,
+            total_earnings DECIMAL(10, 2) DEFAULT 0.00,
+            pending_earnings DECIMAL(10, 2) DEFAULT 0.00,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            paid_at TIMESTAMP NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (agent_user_id) REFERENCES users(id) ON DELETE CASCADE,
+            INDEX idx_agent_id (agent_id),
+            INDEX idx_agent_user_id (agent_user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        """
+        cursor.execute(sql)
+        print("Agent_info table created successfully")
+        connection.commit()
+
+def alter_order_history_table(connection):
+    with connection.cursor() as cursor:
+        if not column_exists(cursor, "order_history", "agent_id"):
+            print("Adding agent_id column...")
+            cursor.execute("ALTER TABLE order_history ADD COLUMN agent_id VARCHAR(255) DEFAULT NULL;")
+        if not column_exists(cursor, "order_history", "commission"):
+            print("Adding commission column...")
+            cursor.execute("ALTER TABLE order_history ADD COLUMN commission DECIMAL(10, 2) DEFAULT 0.00;")
+        connection.commit()
+        print("Order_history table altered successfully")
+
+# Add this to init_database function
 def init_database(connection):
     create_users_table(connection)
     create_transactions_table(connection)
+    alter_users_table(connection)
     create_order_history_table(connection)
+    create_agent_info_table(connection)
+    alter_order_history_table(connection)

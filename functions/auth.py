@@ -380,15 +380,17 @@ def create_order(data):
         # Insert new order
         cur.execute("""
             INSERT INTO order_history 
-            (user_id, order_id, service_name, link, amount, status)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            (user_id, order_id, service_name, link, amount, status, agent_id, commission)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             data['user_id'],
             data['order_id'],
             data['service_name'],
             data['link'],
             float(data['amount']),
-            data['status']
+            data['status'],
+            data.get('agent_id', None),
+            float(data.get('commission', 4))
         ))
         
         conn.commit()
@@ -422,4 +424,360 @@ def create_order(data):
     finally:
         if conn:
             conn.close()
+
+
+def agent_signup():
+    try:
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided", "status": 400}), 400
+            
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not all([email, password]):
+            return jsonify({
+                "message": "Email and password are required",
+                "status": 400
+            }), 400
+        
+        # First, try to login to verify user exists
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check if user exists
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        
+        if not user:
+            return jsonify({
+                "status": "error",
+                "message": "User does not exist. Please sign up as a regular user first."
+            }), 404
+        
+        # Verify password (plain text comparison)
+        if user['password'] != password:
+            return jsonify({
+                "status": "error",
+                "message": "Invalid credentials"
+            }), 401
+        
+        # Check if already an agent
+        if user['is_agent']:
+            return jsonify({
+                "status": "error",
+                "message": "User is already registered as an agent"
+            }), 400
+        
+        # Generate agent_id from email (remove @domain.com)
+        agent_id = email.split('@')[0]
+        
+        # Update user as agent
+        cur.execute("""
+            UPDATE users 
+            SET is_agent = TRUE, 
+                agent_id = %s, 
+                agent_password = %s
+            WHERE id = %s
+        """, (agent_id, password, user['id']))
+        
+        conn.commit()
+        
+        # Get updated user info
+        cur.execute("SELECT id, username, email, balance, agent_id, is_agent FROM users WHERE id = %s", (user['id'],))
+        updated_user = cur.fetchone()
+        
+        return jsonify({
+            "status": "success",
+            "message": "Successfully registered as an agent",
+            "user": {
+                "id": updated_user['id'],
+                "username": updated_user['username'],
+                "email": updated_user['email'],
+                "balance": float(updated_user['balance']),
+                "agent_id": updated_user['agent_id'],
+                "is_agent": updated_user['is_agent']
+            }
+        })
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+def agent_login():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided", "status": 400}), 400
+            
+        agent_id = data.get('agent_id')
+        password = data.get('password')
+        
+        if not all([agent_id, password]):
+            return jsonify({
+                "message": "Agent ID and password are required",
+                "status": 400
+            }), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check if agent exists and credentials are correct
+        cur.execute("""
+            SELECT u.*, ai.* 
+            FROM users u 
+            LEFT JOIN agent_info ai ON u.id = ai.agent_user_id 
+            WHERE u.agent_id = %s AND u.agent_password = %s AND u.is_agent = TRUE
+        """, (agent_id, password))
+        
+        agent = cur.fetchone()
+        if not agent:
+            return jsonify({
+                "status": "error",
+                "message": "Invalid agent credentials"
+            }), 401
+            
+        # Check subscription status
+        subscription_valid = False
+        if agent['is_paid'] and agent['subscription_end_date']:
+            if datetime.now() < agent['subscription_end_date']:
+                subscription_valid = True
+        
+        return jsonify({
+            "status": "success",
+            "message": "Agent login successful",
+            "agent": {
+                "id": agent['id'],
+                "username": agent['username'],
+                "email": agent['email'],
+                "agent_id": agent['agent_id'],
+                "commission_rate": float(agent['commission_rate']) if agent['commission_rate'] else None,
+                "subscription_valid": subscription_valid,
+                "subscription_end_date": agent['subscription_end_date'].strftime("%Y-%m-%d %H:%M:%S") if agent['subscription_end_date'] else None,
+                "total_earnings": float(agent['total_earnings']) if agent['total_earnings'] else 0.00,
+                "pending_earnings": float(agent['pending_earnings']) if agent['pending_earnings'] else 0.00
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+def check_agent_subscription():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided", "status": 400}), 400
+            
+        agent_id = data.get('agent_id')
+        
+        if not agent_id:
+            return jsonify({
+                "message": "Agent ID is required",
+                "status": 400
+            }), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT * FROM agent_info 
+            WHERE agent_id = %s
+        """, (agent_id,))
+        
+        agent_info = cur.fetchone()
+        
+        if not agent_info:
+            return jsonify({
+                "status": "error",
+                "message": "Agent not found"
+            }), 404
+            
+        subscription_status = {
+            "is_paid": agent_info['is_paid'],
+            "subscription_type": agent_info['subscription_type'],
+            "commission_rate": float(agent_info['commission_rate']),
+            "subscription_start": agent_info['subscription_start_date'].strftime("%Y-%m-%d %H:%M:%S") if agent_info['subscription_start_date'] else None,
+            "subscription_end": agent_info['subscription_end_date'].strftime("%Y-%m-%d %H:%M:%S") if agent_info['subscription_end_date'] else None,
+            "is_active": False,
+            "days_remaining": 0
+        }
+        
+        if agent_info['is_paid'] and agent_info['subscription_end_date']:
+            now = datetime.now()
+            if now < agent_info['subscription_end_date']:
+                subscription_status["is_active"] = True
+                days_remaining = (agent_info['subscription_end_date'] - now).days
+                subscription_status["days_remaining"] = days_remaining
+        
+        return jsonify({
+            "status": "success",
+            "subscription": subscription_status
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+def subscribe_agent():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided", "status": 400}), 400
+            
+        agent_id = data.get('agent_id')
+        subscription_type = data.get('subscription_type')
+        
+        if not all([agent_id, subscription_type]):
+            return jsonify({
+                "message": "Agent ID and subscription type are required",
+                "status": 400
+            }), 400
+            
+        if subscription_type not in ['basic', 'premium']:
+            return jsonify({
+                "message": "Invalid subscription type. Must be 'basic' or 'premium'",
+                "status": 400
+            }), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Get subscription details based on type
+        subscription_details = {
+            'basic': {'amount': 5000.00, 'commission_rate': 5.00},
+            'premium': {'amount': 48000.00, 'commission_rate': 10.00}
+        }[subscription_type]
+        
+        # Get agent user details
+        cur.execute("SELECT id FROM users WHERE agent_id = %s AND is_agent = TRUE", (agent_id,))
+        agent = cur.fetchone()
+        if not agent:
+            return jsonify({
+                "status": "error",
+                "message": "Agent not found"
+            }), 404
+            
+        # Check if agent already has subscription
+        cur.execute("SELECT * FROM agent_info WHERE agent_id = %s", (agent_id,))
+        existing_subscription = cur.fetchone()
+        
+        subscription_start = datetime.now()
+        subscription_end = subscription_start.replace(year=subscription_start.year + 1)
+        
+        if existing_subscription:
+            # Update existing subscription
+            cur.execute("""
+                UPDATE agent_info 
+                SET subscription_type = %s,
+                    commission_rate = %s,
+                    subscription_amount = %s,
+                    is_paid = TRUE,
+                    subscription_start_date = %s,
+                    subscription_end_date = %s,
+                    paid_at = NOW()
+                WHERE agent_id = %s
+            """, (
+                subscription_type,
+                subscription_details['commission_rate'],
+                subscription_details['amount'],
+                subscription_start,
+                subscription_end,
+                agent_id
+            ))
+        else:
+            # Create new subscription
+            cur.execute("""
+                INSERT INTO agent_info 
+                (agent_id, agent_user_id, subscription_type, commission_rate, 
+                subscription_amount, is_paid, subscription_start_date, 
+                subscription_end_date, paid_at)
+                VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s, NOW())
+            """, (
+                agent_id,
+                agent['id'],
+                subscription_type,
+                subscription_details['commission_rate'],
+                subscription_details['amount'],
+                subscription_start,
+                subscription_end
+            ))
+        
+        conn.commit()
+        
+        return jsonify({
+            "status": "success",
+            "message": "Subscription activated successfully",
+            "subscription": {
+                "type": subscription_type,
+                "amount": subscription_details['amount'],
+                "commission_rate": subscription_details['commission_rate'],
+                "start_date": subscription_start.strftime("%Y-%m-%d %H:%M:%S"),
+                "end_date": subscription_end.strftime("%Y-%m-%d %H:%M:%S")
+            }
+        }), 200
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+def check_agent_id(agent_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT agent_id, username, is_agent 
+            FROM users 
+            WHERE agent_id = %s AND is_agent = TRUE
+        """, (agent_id,))
+        
+        agent = cur.fetchone()
+        
+        if not agent:
+            return jsonify({
+                "status": "error",
+                "message": "Agent ID not found",
+                "exists": False
+            }), 404
+            
+        return jsonify({
+            "status": "success",
+            "message": "Agent ID exists",
+            "exists": True,
+            "agent": {
+                "agent_id": agent['agent_id'],
+                "username": agent['username']
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
         
