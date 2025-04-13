@@ -16,6 +16,22 @@ def create_users_table(connection):
         cursor.execute(sql)
         connection.commit()
 
+def alter_agent_withdrawals_table(connection):
+    try:
+        with connection.cursor() as cursor:
+            if not column_exists(cursor, "agent_withdrawals", "bank_name"):
+                print("Adding bank_name column...")
+                cursor.execute("ALTER TABLE agent_withdrawals ADD COLUMN bank_name VARCHAR(255) NOT NULL;")
+            if not column_exists(cursor, "agent_withdrawals", "account_number"):
+                print("Adding account_number column...")
+                cursor.execute("ALTER TABLE agent_withdrawals ADD COLUMN account_number VARCHAR(255) NOT NULL;")
+            connection.commit()
+            print("Agent withdrawals table altered successfully")
+    except Exception as e:
+        print(f"Error altering agent_withdrawals table: {str(e)}")
+        connection.rollback()
+
+
 def column_exists(cursor, table_name, column_name):
     cursor.execute("""
         SELECT COUNT(*) as count FROM information_schema.COLUMNS
@@ -131,7 +147,51 @@ def alter_order_history_table(connection):
         connection.commit()
         print("Order_history table altered successfully")
 
-# Add this to init_database function
+def create_agent_withdrawals_table(connection):
+    with connection.cursor() as cursor:
+        sql = """
+        CREATE TABLE IF NOT EXISTS agent_withdrawals (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            agent_id VARCHAR(255) NOT NULL,
+            amount DECIMAL(10, 2) NOT NULL,
+            order_ids TEXT NOT NULL,
+            transaction_reference VARCHAR(255) NOT NULL UNIQUE,
+            email VARCHAR(255) GENERATED ALWAYS AS (CONCAT(agent_id, '@gmail.com')) STORED,
+            status ENUM('pending', 'approved', 'processing') DEFAULT 'pending',
+            bank_name VARCHAR(255) NOT NULL,
+            account_number VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_agent_id (agent_id),
+            INDEX idx_status (status),
+            INDEX idx_transaction_reference (transaction_reference)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        """
+        cursor.execute(sql)
+        connection.commit()
+
+def create_withdrawn_orders_table(connection):
+    with connection.cursor() as cursor:
+        sql = """
+        CREATE TABLE IF NOT EXISTS withdrawn_orders (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            withdrawal_id INT NOT NULL,
+            order_id VARCHAR(100) NOT NULL,
+            agent_id VARCHAR(255) NOT NULL,
+            amount DECIMAL(10, 2) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (withdrawal_id) REFERENCES agent_withdrawals(id) ON DELETE CASCADE,
+            INDEX idx_order_id (order_id),
+            INDEX idx_agent_id (agent_id),
+            UNIQUE KEY unique_order_withdrawal (order_id, withdrawal_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        """
+        cursor.execute(sql)
+        connection.commit()
+
+
+
+# Update init_database function
 def init_database(connection):
     create_users_table(connection)
     create_transactions_table(connection)
@@ -139,3 +199,6 @@ def init_database(connection):
     create_order_history_table(connection)
     create_agent_info_table(connection)
     alter_order_history_table(connection)
+    create_agent_withdrawals_table(connection)
+    create_withdrawn_orders_table(connection)
+    alter_agent_withdrawals_table(connection)  # Add this line

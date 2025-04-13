@@ -870,4 +870,141 @@ def get_agent_order_details(agent_id):
     finally:
         if conn:
             conn.close()
+
+def get_agent_withdrawal_details(agent_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Get all completed orders
+        cur.execute("""
+            SELECT oh.order_id, oh.amount, oh.commission
+            FROM order_history oh
+            WHERE oh.agent_id = %s 
+            AND oh.status = 'completed'
+        """, (agent_id,))
+        
+        completed_orders = cur.fetchall()
+        
+        # Get withdrawn orders
+        cur.execute("""
+            SELECT wo.order_id
+            FROM withdrawn_orders wo
+            WHERE wo.agent_id = %s
+        """, (agent_id,))
+        
+        withdrawn_orders = [order['order_id'] for order in cur.fetchall()]
+        
+        # Calculate available balance
+        available_balance = 0
+        for order in completed_orders:
+            if order['order_id'] not in withdrawn_orders:
+                commission = (float(order['commission']) * float(order['amount'])) / 100
+                available_balance += commission
+        
+        # Get withdrawal history
+        cur.execute("""
+            SELECT aw.*, GROUP_CONCAT(wo.order_id) as withdrawn_order_ids
+            FROM agent_withdrawals aw
+            LEFT JOIN withdrawn_orders wo ON aw.id = wo.withdrawal_id
+            WHERE aw.agent_id = %s
+            GROUP BY aw.id
+            ORDER BY aw.created_at DESC
+        """, (agent_id,))
+        
+        withdrawals = cur.fetchall()
+        
+        return jsonify({
+            "status": "success",
+            "availableBalance": float(available_balance),
+            "withdrawnOrders": withdrawn_orders,
+            "withdrawals": [{
+                'id': w['id'],
+                'amount': float(w['amount']),
+                'status': w['status'],
+                'transaction_reference': w['transaction_reference'],
+                'created_at': w['created_at'].strftime("%Y-%m-%d %H:%M:%S"),
+                'order_ids': w['withdrawn_order_ids'].split(',') if w['withdrawn_order_ids'] else []
+            } for w in withdrawals]
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+def create_withdrawal_request(data):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        agent_id = data['agent_id']
+        amount = float(data['amount'])
+        order_ids = data['order_ids']
+        bank_name = data['bank_name']
+        account_number = data['account_number']
+        
+        # Verify orders and calculate total available
+        total_available = 0
+        for order_id in order_ids:
+            cur.execute("""
+                SELECT oh.amount, oh.commission
+                FROM order_history oh
+                LEFT JOIN withdrawn_orders wo ON oh.order_id = wo.order_id
+                WHERE oh.order_id = %s 
+                AND oh.agent_id = %s
+                AND oh.status = 'completed'
+                AND wo.id IS NULL
+            """, (order_id, agent_id))
+            
+            order = cur.fetchone()
+            if order:
+                commission = (float(order['commission']) * float(order['amount'])) / 100
+                total_available += commission
+        
+        if amount > total_available:
+            raise Exception("Insufficient balance for withdrawal")
+        
+        # Create withdrawal record
+        transaction_reference = f"WD-{int(time.time())}"
+        cur.execute("""
+            INSERT INTO agent_withdrawals 
+            (agent_id, amount, order_ids, transaction_reference, bank_name, account_number)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (agent_id, amount, ','.join(order_ids), transaction_reference, bank_name, account_number))
+        
+        withdrawal_id = cur.lastrowid
+        
+        # Record withdrawn orders
+        for order_id in order_ids:
+            cur.execute("""
+                INSERT INTO withdrawn_orders 
+                (withdrawal_id, order_id, agent_id, amount)
+                SELECT %s, oh.order_id, %s, (oh.amount * oh.commission / 100)
+                FROM order_history oh
+                WHERE oh.order_id = %s AND oh.agent_id = %s
+            """, (withdrawal_id, agent_id, order_id, agent_id))
+        
+        conn.commit()
+        
+        return jsonify({
+            "status": "success",
+            "message": "Withdrawal request created successfully",
+            "transaction_reference": transaction_reference
+        })
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
         

@@ -372,5 +372,30 @@ def getAgentOrders():
 def getAgentOrderDetails(agent_id):
     return get_agent_order_details(agent_id)
 
+@app.route("/agent/withdrawal-details/<agent_id>", methods=["GET"])
+def getAgentWithdrawalDetails(agent_id):
+    return get_agent_withdrawal_details(agent_id)
+
+@app.route("/agent/withdraw", methods=["POST"])
+def createWithdrawalRequest():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided", "status": 400}), 400
+            
+        required_fields = ['agent_id', 'amount', 'order_ids', 'bank_name', 'account_number']
+        missing_fields = [field for field in required_fields if field not in data]
+        
+        if missing_fields:
+            return jsonify({
+                "message": f"Missing required fields: {', '.join(missing_fields)}",
+                "status": 400
+            }), 400
+            
+        return create_withdrawal_request(data)
+        
+    except Exception as e:
+        return jsonify({"message": str(e), "status": 500}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=1245)
