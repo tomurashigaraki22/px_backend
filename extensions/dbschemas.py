@@ -144,6 +144,13 @@ def alter_order_history_table(connection):
         if not column_exists(cursor, "order_history", "commission"):
             print("Adding commission column...")
             cursor.execute("ALTER TABLE order_history ADD COLUMN commission DECIMAL(10, 2) DEFAULT 0.00;")
+        if not column_exists(cursor, "order_history", "is_paid_agent"):
+            print("Adding is_paid_agent column...")
+            cursor.execute("""
+                ALTER TABLE order_history 
+                ADD COLUMN is_paid_agent ENUM('pending', 'processing', 'approved', 'failed') 
+                DEFAULT 'pending'
+            """)
         connection.commit()
         print("Order_history table altered successfully")
 
