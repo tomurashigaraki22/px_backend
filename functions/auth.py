@@ -391,7 +391,7 @@ def create_order(data):
             float(data['amount']),
             data['status'],
             data.get('agentId', None),
-            float(data.get('commission', 4))
+            float(10)
         ))
         
         conn.commit()
