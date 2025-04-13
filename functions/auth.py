@@ -851,8 +851,7 @@ def get_agent_order_details(agent_id):
             'link': order['link'],
             'amount': float(order['amount']),
             'status': order['status'],
-            'commission_percentage': float(order['commission_percentage']) if order['commission_percentage'] else 0.00,
-            'commission_amount': float(order['commission_amount']) if order['commission_amount'] else 0.00,
+            'commission': float(order['commission']) if order['commission'] else 0.00,
             'created_at': order['created_at'].strftime("%Y-%m-%d %H:%M:%S"),
             'updated_at': order['updated_at'].strftime("%Y-%m-%d %H:%M:%S")
         } for order in orders]
@@ -871,5 +870,4 @@ def get_agent_order_details(agent_id):
     finally:
         if conn:
             conn.close()
-
         
