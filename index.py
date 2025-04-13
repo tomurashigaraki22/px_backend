@@ -480,6 +480,7 @@ def get_admin_orders():
             'service_name': order['service_name'],
             'amount': float(order['amount']),
             'status': order['status'],
+            'agent_id': order['agent_id'],
             'created_at': order['created_at'].strftime("%Y-%m-%d %H:%M:%S")
         } for order in orders])
         
