@@ -397,5 +397,214 @@ def createWithdrawalRequest():
     except Exception as e:
         return jsonify({"message": str(e), "status": 500}), 500
 
+# Add these new admin routes after your existing routes
+
+@app.route("/admin/users", methods=["GET"])
+def get_admin_users():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT id, username, email, balance, created_at, is_agent
+            FROM users
+            ORDER BY created_at DESC
+        """)
+        
+        users = cur.fetchall()
+        return jsonify([{
+            'id': user['id'],
+            'username': user['username'],
+            'email': user['email'],
+            'balance': float(user['balance']),
+            'created_at': user['created_at'].strftime("%Y-%m-%d %H:%M:%S"),
+            'is_agent': user['is_agent']
+        } for user in users])
+        
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route("/admin/agents", methods=["GET"])
+def get_admin_agents():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT u.id, u.username, u.email, ai.*
+            FROM users u
+            JOIN agent_info ai ON u.id = ai.agent_user_id
+            WHERE u.is_agent = TRUE
+            ORDER BY ai.created_at DESC
+        """)
+        
+        agents = cur.fetchall()
+        return jsonify([{
+            'id': agent['id'],
+            'username': agent['username'],
+            'email': agent['email'],
+            'agent_id': agent['agent_id'],
+            'subscription_type': agent['subscription_type'],
+            'total_earnings': float(agent['total_earnings']),
+            'pending_earnings': float(agent['pending_earnings']),
+            'created_at': agent['created_at'].strftime("%Y-%m-%d %H:%M:%S")
+        } for agent in agents])
+        
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route("/admin/orders", methods=["GET"])
+def get_admin_orders():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT oh.*, u.username
+            FROM order_history oh
+            LEFT JOIN users u ON oh.user_id = u.id
+            ORDER BY oh.created_at DESC
+        """)
+        
+        orders = cur.fetchall()
+        return jsonify([{
+            'id': order['id'],
+            'order_id': order['order_id'],
+            'username': order['username'],
+            'service_name': order['service_name'],
+            'amount': float(order['amount']),
+            'status': order['status'],
+            'created_at': order['created_at'].strftime("%Y-%m-%d %H:%M:%S")
+        } for order in orders])
+        
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route("/admin/withdrawals", methods=["GET"])
+def get_admin_withdrawals():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT aw.*, u.username
+            FROM agent_withdrawals aw
+            LEFT JOIN users u ON u.agent_id = aw.agent_id
+            ORDER BY aw.created_at DESC
+        """)
+        
+        withdrawals = cur.fetchall()
+        return jsonify([{
+            'id': w['id'],
+            'agent_id': w['agent_id'],
+            'username': w['username'],
+            'amount': float(w['amount']),
+            'status': w['status'],
+            'bank_name': w['bank_name'],
+            'account_number': w['account_number'],
+            'created_at': w['created_at'].strftime("%Y-%m-%d %H:%M:%S")
+        } for w in withdrawals])
+        
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route("/admin/metrics", methods=["GET"])
+def get_admin_metrics():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Get daily orders for the last 7 days
+        cur.execute("""
+            SELECT 
+                DATE(created_at) as date,
+                COUNT(*) as count
+            FROM order_history
+            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            GROUP BY DATE(created_at)
+            ORDER BY date
+        """)
+        
+        daily_orders = [{
+            'date': row['date'].strftime("%Y-%m-%d"),
+            'count': row['count']
+        } for row in cur.fetchall()]
+        
+        # Get monthly revenue for the last 6 months
+        cur.execute("""
+            SELECT 
+                DATE_FORMAT(created_at, '%Y-%m') as month,
+                SUM(amount) as revenue
+            FROM order_history
+            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+            GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+            ORDER BY month
+        """)
+        
+        monthly_revenue = [{
+            'month': row['month'],
+            'revenue': float(row['revenue'])
+        } for row in cur.fetchall()]
+        
+        return jsonify({
+            'dailyOrders': daily_orders,
+            'monthlyRevenue': monthly_revenue
+        })
+        
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route("/admin/withdrawals/<int:withdrawal_id>", methods=["PUT"])
+def update_withdrawal_status(withdrawal_id):
+    try:
+        data = request.get_json()
+        if not data or 'status' not in data:
+            return jsonify({"message": "Status is required"}), 400
+            
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Update withdrawal status
+        cur.execute("""
+            UPDATE agent_withdrawals
+            SET status = %s
+            WHERE id = %s
+        """, (data['status'], withdrawal_id))
+        
+        # If status is 'approved', update order_history status
+        if data['status'] == 'approved':
+            cur.execute("""
+                UPDATE order_history oh
+                JOIN withdrawn_orders wo ON oh.order_id = wo.order_id
+                SET oh.is_paid_agent = 'approved'
+                WHERE wo.withdrawal_id = %s
+            """, (withdrawal_id,))
+        
+        conn.commit()
+        return jsonify({"message": "Withdrawal status updated successfully"})
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({"message": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=1245)
