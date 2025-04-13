@@ -58,7 +58,7 @@ def agentSignupNow():
 @app.route('/show/<tablename>')
 def show_table(tablename):
     # List of allowed tables for querying
-    allowed_tables = ['users', 'transactions', 'order_history', 'agent_info']
+    allowed_tables = ['users', 'transactions', 'order_history', 'agent_info', 'withdrawn_orders', 'agent_withdrawals']
     
     if tablename not in allowed_tables:
         return jsonify({
