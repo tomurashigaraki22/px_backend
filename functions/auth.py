@@ -852,6 +852,7 @@ def get_agent_order_details(agent_id):
             'link': order['link'],
             'amount': float(order['amount']),
             'status': order['status'],
+            'is_paid_agent': order['is_paid_agent'],
             'commission': float(order['commission']) if order['commission'] else 0.00,
             'created_at': order['created_at'].strftime("%Y-%m-%d %H:%M:%S"),
             'updated_at': order['updated_at'].strftime("%Y-%m-%d %H:%M:%S")
@@ -882,11 +883,11 @@ def get_agent_withdrawal_details(agent_id):
             SELECT oh.order_id, oh.amount, oh.commission
             FROM order_history oh
             WHERE oh.agent_id = %s 
-            AND oh.status = 'completed'
             AND oh.is_paid_agent = 'pending'
         """, (agent_id,))
         
         completed_orders = cur.fetchall()
+        print(f"Completed orders: {completed_orders}")
         
         # Calculate available balance
         available_balance = 0
@@ -938,25 +939,28 @@ def create_withdrawal_request(data):
         order_ids = data['order_ids']
         bank_name = data['bank_name']
         account_number = data['account_number']
+        print(f"order:  {order_ids}")
         
         # Verify orders and calculate total available
         total_available = 0
         for order_id in order_ids:
+            print(f"ORDER ID: {order_id}")
             cur.execute("""
                 SELECT oh.amount, oh.commission
                 FROM order_history oh
                 WHERE oh.order_id = %s 
                 AND oh.agent_id = %s
-                AND oh.status = 'completed'
                 AND oh.is_paid_agent = 'pending'
             """, (order_id, agent_id))
             
             order = cur.fetchone()
+            print(f"ORDER: {order}")
             if order:
                 commission = (float(order['commission']) * float(order['amount'])) / 100
                 total_available += commission
         
         if amount > total_available:
+            print(f"Amount: {amount}, Total available: {total_available}")
             raise Exception("Insufficient balance for withdrawal")
         
         # Create withdrawal record
@@ -993,4 +997,3 @@ def create_withdrawal_request(data):
     finally:
         if conn:
             conn.close()
-
