@@ -389,7 +389,7 @@ def create_order(data):
             data['link'],
             float(data['amount']),
             data['status'],
-            data.get('agent_id', None),
+            data.get('agentId', None),
             float(data.get('commission', 4))
         ))
         
@@ -769,6 +769,53 @@ def check_agent_id(agent_id):
                 "agent_id": agent['agent_id'],
                 "username": agent['username']
             }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+def get_agent_orders(agent_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Get count of orders for this agent
+        cur.execute("""
+            SELECT COUNT(*) as order_count 
+            FROM order_history 
+            WHERE agent_id = %s
+        """, (agent_id,))
+        
+        count_result = cur.fetchone()
+        order_count = count_result['order_count'] if count_result else 0
+        
+        # Get order details
+        cur.execute("""
+            SELECT order_id, amount, created_at
+            FROM order_history 
+            WHERE agent_id = %s 
+            ORDER BY created_at DESC
+        """, (agent_id,))
+        
+        orders = cur.fetchall()
+        
+        order_details = [{
+            'order_id': order['order_id'],
+            'amount': float(order['amount']),
+            'date': order['created_at'].strftime("%Y-%m-%d %H:%M:%S")
+        } for order in orders]
+        
+        return jsonify({
+            "status": "success",
+            "total_orders": order_count,
+            "orders": order_details
         })
         
     except Exception as e:

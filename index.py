@@ -235,6 +235,8 @@ def create_new_order():
                 "message": f"Missing required fields: {', '.join(missing_fields)}",
                 "status": 400
             }), 400
+
+        print(data['agentId'])
             
         return create_order(data)
         
@@ -349,6 +351,22 @@ def remove_table(tablename, password):
 @app.route("/check/<agent_id>", methods=["GET"])
 def checkAgentId(agent_id):
     return check_agent_id(agent_id)
+
+@app.route("/agent/orders", methods=["POST"])
+def getAgentOrders():
+    try:
+        data = request.get_json()
+        if not data or 'agent_id' not in data:
+            return jsonify({
+                "status": "error",
+                "message": "Agent ID is required"
+            }), 400
+        return get_agent_orders(data['agent_id'])
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=1245)
