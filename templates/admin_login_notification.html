@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container {
+            padding: 20px;
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .header {
+            color: #e91e63;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .footer {
+            margin-top: 20px;
+            color: #6c757d;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            Admin Panel Login Alert
+        </div>
+        <div class="content">
+            <p>A new login to the admin panel has been detected.</p>
+            <p>Date: {{ login_date }}</p>
+            <p>Time: {{ login_time }}</p>
+            <p>IP Address: {{ ip_address }}</p>
+        </div>
+        <div class="footer">
+            This is an automated message from PX Backend.
+        </div>
+    </div>
+</body>
+</html>

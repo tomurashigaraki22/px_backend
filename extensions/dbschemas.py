@@ -197,6 +197,20 @@ def create_withdrawn_orders_table(connection):
         connection.commit()
 
 
+def update_order_status(connection, order_id, new_status):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE order_history 
+                SET status = %s
+                WHERE id = %s
+            """, ('completing', 37))
+            connection.commit()
+            print(f"Order {37} status updated to completing")
+    except Exception as e:
+        print(f"Error updating order status: {str(e)}")
+        connection.rollback()
+
 
 # Update init_database function
 def init_database(connection):
@@ -208,4 +222,12 @@ def init_database(connection):
     alter_order_history_table(connection)
     create_agent_withdrawals_table(connection)
     create_withdrawn_orders_table(connection)
+    update_order_status(connection, 37, 'completing')  # Add this line
     alter_agent_withdrawals_table(connection)  # Add this line
+
+
+
+# Usage example:
+# conn = get_db_connection()
+# update_order_status(conn, 37, 'completing')
+# conn.close()

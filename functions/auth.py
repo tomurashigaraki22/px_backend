@@ -58,6 +58,37 @@ def send_login_notification(user):
     except Exception as e:
         print(f"Error sending login notification: {str(e)}")
 
+def send_admin_login_notification():
+    try:
+        now = datetime.now()
+        msg = Message(
+            "Admin Panel Login Alert - PX Backend",
+            recipients=["devtomiwa9@gmail.com"]
+        )
+        msg.html = render_template(
+            'admin_login_notification.html',
+            login_date=now.strftime("%Y-%m-%d"),
+            login_time=now.strftime("%H:%M:%S"),
+            ip_address=request.remote_addr
+        )
+        mail.send(msg)
+    except Exception as e:
+        print(f"Error sending admin login notification: {str(e)}")
+
+def send_withdrawal_request_notification():
+    try:
+        msg = Message(
+            "New Withdrawal Request - PX Backend",
+            recipients=["devtomiwa9@gmail.com"]
+        )
+        msg.html = render_template(
+            'withdrawal_notification.html',
+            request_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
+        mail.send(msg)
+    except Exception as e:
+        print(f"Error sending withdrawal notification: {str(e)}")
+
 def login():
     try:
         conn = get_db_connection()
@@ -980,6 +1011,7 @@ def create_withdrawal_request(data):
             """, (order_id, agent_id))
         
         conn.commit()
+        send_withdrawal_request_notification()
         
         return jsonify({
             "status": "success",

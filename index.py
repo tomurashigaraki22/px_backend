@@ -243,6 +243,7 @@ def create_new_order():
     except Exception as e:
         return jsonify({"message": str(e), "status": 500}), 500
 
+
 @app.route('/table/<tablename>')
 def view_table(tablename):
     # List of allowed tables for querying
