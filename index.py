@@ -368,5 +368,9 @@ def getAgentOrders():
             "message": str(e)
         }), 500
 
+@app.route("/agent/orders/<agent_id>", methods=["GET"])
+def getAgentOrderDetails(agent_id):
+    return get_agent_order_details(agent_id)
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=1245)

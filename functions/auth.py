@@ -827,4 +827,49 @@ def get_agent_orders(agent_id):
         if conn:
             conn.close()
 
+def get_agent_order_details(agent_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT oh.*, u.username as customer_name
+            FROM order_history oh
+            LEFT JOIN users u ON oh.user_id = u.id
+            WHERE oh.agent_id = %s 
+            ORDER BY oh.created_at DESC
+        """, (agent_id,))
+        
+        orders = cur.fetchall()
+        
+        detailed_orders = [{
+            'id': order['id'],
+            'order_id': order['order_id'],
+            'customer_name': order['customer_name'],
+            'user_id': order['user_id'],
+            'service_name': order['service_name'],
+            'link': order['link'],
+            'amount': float(order['amount']),
+            'status': order['status'],
+            'commission_percentage': float(order['commission_percentage']) if order['commission_percentage'] else 0.00,
+            'commission_amount': float(order['commission_amount']) if order['commission_amount'] else 0.00,
+            'created_at': order['created_at'].strftime("%Y-%m-%d %H:%M:%S"),
+            'updated_at': order['updated_at'].strftime("%Y-%m-%d %H:%M:%S")
+        } for order in orders]
+        
+        return jsonify({
+            "status": "success",
+            "total_orders": len(detailed_orders),
+            "orders": detailed_orders
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
         
