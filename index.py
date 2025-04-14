@@ -195,6 +195,7 @@ def get_user_orders(user_id):
 @app.route('/test-mail', methods=["GET", "POST"])
 def test_mail():
     try:
+        print(f"MEHH ")
         msg = Message(
             "Welcome to PXSM",
             recipients=["devtomiwa9@gmail.com"]  # Replace with test email

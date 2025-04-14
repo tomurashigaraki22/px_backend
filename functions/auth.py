@@ -63,7 +63,7 @@ def send_admin_login_notification():
         now = datetime.now()
         msg = Message(
             "Admin Panel Login Alert - PX Backend",
-            recipients=["devtomiwa9@gmail.com"]
+            recipients=["Utom7862@gmail.com"]
         )
         msg.html = render_template(
             'admin_login_notification.html',
