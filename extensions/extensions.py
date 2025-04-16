@@ -13,15 +13,13 @@ app = Flask(__name__, template_folder='../templates')
 CORS(app)
 
 # Configure mail settings
-app.config['MAIL_SERVER'] = 'mail.pxs.name.ng'
+app.config['MAIL_SERVER'] = "smtp.gmail.com"
 app.config['MAIL_PORT'] = 465
-app.config['MAIL_USERNAME'] = 'pxsm@pxs.name.ng'
-app.config['MAIL_PASSWORD'] = 'Pityboy@22'
-app.config['MAIL_USE_SSL'] = True
 app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_DEFAULT_SENDER'] = ('PXSM System', 'pxsm@pxs.name.ng')
-app.config['MAIL_MAX_EMAILS'] = None
-app.config['MAIL_ASCII_ATTACHMENTS'] = False
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_USERNAME'] = "noreply.dropapp@gmail.com"
+app.config['MAIL_PASSWORD'] = "iaik logl kifo tzzw"
+app.config['MAIL_DEFAULT_SENDER'] = "PXSM BACKEND"
 
 # Initialize Flask-Mail
 mail = Mail(app)
@@ -50,12 +48,13 @@ def setup_extensions():
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max payload
     
     # Configure Flask-Mail with dummy settings
-    app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.example.com')
-    app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
-    app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
-    app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME', 'user@example.com')
-    app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', 'password')
-    app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@example.com')
+    app.config['MAIL_SERVER'] = "smtp.gmail.com"
+    app.config['MAIL_PORT'] = 465
+    app.config['MAIL_USE_TLS'] = False
+    app.config['MAIL_USE_SSL'] = True
+    app.config['MAIL_USERNAME'] = "noreply.dropapp@gmail.com"
+    app.config['MAIL_PASSWORD'] = "iaik logl kifo tzzw"
+    app.config['MAIL_DEFAULT_SENDER'] = "PXSM BACKEND"
     
     # Initialize mail
     mail.init_app(app)

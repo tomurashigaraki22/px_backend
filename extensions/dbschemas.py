@@ -212,6 +212,8 @@ def update_order_status(connection, order_id, new_status):
         connection.rollback()
 
 
+
+
 # Update init_database function
 def init_database(connection):
     create_users_table(connection)

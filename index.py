@@ -291,6 +291,60 @@ def view_table(tablename):
             "message": str(e)
         }), 500
 
+@app.route("/adminwork/update_balance", methods=["POST"])
+def addmin_update_user_balance():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided", "status": 400}), 400
+            
+        email = data.get('email')
+        amount = data.get('amount')
+        
+        if not all([email, amount]):
+            return jsonify({
+                "message": "Email and amount are required",
+                "status": 400
+            }), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check if user exists
+        cur.execute("SELECT id, balance FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        
+        if not user:
+            return jsonify({
+                "status": "error",
+                "message": "User not found"
+            }), 404
+        
+        # Update balance
+        cur.execute("""
+            UPDATE users 
+            SET balance = %s 
+            WHERE email = %s
+        """, (float(amount), email))
+        
+        conn.commit()
+        
+        return jsonify({
+            "status": "success",
+            "message": "Balance updated successfully",
+            "new_balance": float(amount)
+        })
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
 
 @app.route("/auth/agent-login", methods=["POST"])
 def agentLoginNow():

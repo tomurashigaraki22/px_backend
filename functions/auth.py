@@ -568,6 +568,7 @@ def agent_login():
         """, (agent_id, password))
         
         agent = cur.fetchone()
+        print(f"Agent: {agent}")
         if not agent:
             return jsonify({
                 "status": "error",
