@@ -10,8 +10,13 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__, template_folder='../templates')
-CORS(app)
-
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 # Configure mail settings
 app.config['MAIL_SERVER'] = "smtp.gmail.com"
 app.config['MAIL_PORT'] = 465
