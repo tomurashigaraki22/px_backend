@@ -260,9 +260,7 @@ def set_balance(user_id, amount):
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
+
 
 
 def get_balance(user_id):
@@ -296,6 +294,36 @@ def get_balance(user_id):
     finally:
         if conn:
             conn.close()
+
+def get_balance_email(email):
+    """
+    Get user's current balance
+    Args:
+        user_id (int): User ID
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("SELECT balance FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        
+        if not user:
+            return jsonify({
+                "status": "error",
+                "message": "User not found"
+            }), 404
+            
+        return jsonify({
+            "status": "success",
+            "balance": float(user['balance'])
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
 
 def get_user_transactions(user_id):
     try:

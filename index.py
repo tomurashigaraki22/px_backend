@@ -164,6 +164,20 @@ def get_user_balance(user_id):
     except Exception as e:
         return jsonify({"message": str(e), "status": 500}), 500
 
+@app.route('/balance/<email>', methods=['GET'])
+def get_user_balance(email):
+    try:
+        if not email:
+            return jsonify({
+                "message": "User ID is required",
+                "status": 400
+            }), 400
+            
+        return get_balance_email(email)
+        
+    except Exception as e:
+        return jsonify({"message": str(e), "status": 500}), 500
+
 @app.route('/transactions/<int:user_id>', methods=['GET'])
 def get_transactions(user_id):
     try:
