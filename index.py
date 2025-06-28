@@ -89,8 +89,9 @@ def get_user_id(email):
         cur = conn.cursor()
         cur.execute("SELECT id FROM users WHERE email = %s", (email,))
         user_id = cur.fetchone()
+        print(f"Ussser ID: {user_id}")
         conn.close()
-        return user_id[0] if user_id else None
+        return user_id['id'] if user_id else None
     except Exception as e:
         print(f"Error fetching user ID: {str(e)}")
         return None
