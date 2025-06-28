@@ -165,7 +165,7 @@ def get_user_balance(user_id):
         return jsonify({"message": str(e), "status": 500}), 500
 
 @app.route('/balance/<string:email>', methods=['GET'])
-def get_user_balance(email):
+def get_user_balance_email(email):
     try:
         if not email:
             return jsonify({
