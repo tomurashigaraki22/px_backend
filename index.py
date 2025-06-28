@@ -83,6 +83,18 @@ def show_table(tablename):
             "message": str(e)
         }), 500
 
+def get_user_id(email):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+        user_id = cur.fetchone()
+        conn.close()
+        return user_id[0] if user_id else None
+    except Exception as e:
+        print(f"Error fetching user ID: {str(e)}")
+        return None
+
 @app.route('/balance/update', methods=['POST'])
 def update_user_balance():
     try:
@@ -94,9 +106,11 @@ def update_user_balance():
         if not data:
             return jsonify({"message": "No data provided", "status": 400}), 400
             
-        user_id = data.get('user_id')
+        email = data.get('email')
         amount = data.get('amount')
         transaction_type = data.get('type')
+
+        user_id = get_user_id(email)
         
         if not all([user_id, amount, transaction_type]):
             print(f"Missing required fields: user_id, amount, and type: {user_id} {amount} {transaction_type}")
