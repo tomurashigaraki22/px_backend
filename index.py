@@ -164,7 +164,7 @@ def get_user_balance(user_id):
     except Exception as e:
         return jsonify({"message": str(e), "status": 500}), 500
 
-@app.route('/balance', methods=['GET'])
+@app.route('/balance', methods=['POST'])
 def get_user_balance_email():
     try:
         data = request.get_json()
