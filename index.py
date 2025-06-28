@@ -150,7 +150,7 @@ def set_user_balance():
     except Exception as e:
         return jsonify({"message": str(e), "status": 500}), 500
 
-@app.route('/balance/get/<int:user_id>', methods=['GET'])
+@app.route('/balance/get/<int:user_id>', methods=['GET', 'POST'])
 def get_user_balance(user_id):
     try:
         if not user_id:
