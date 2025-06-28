@@ -164,16 +164,16 @@ def get_user_balance(user_id):
     except Exception as e:
         return jsonify({"message": str(e), "status": 500}), 500
 
-@app.route('/balance/<string:email>', methods=['GET'])
-def get_user_balance_email(email):
+@app.route('/balance', methods=['GET'])
+def get_user_balance_email():
     try:
-        if not email:
-            return jsonify({
-                "message": "User ID is required",
-                "status": 400
-            }), 400
-            
-        return get_balance_email(email)
+        data = request.get_json()
+        if data is not None:
+            email = data.get("email")
+            return get_balance_email(email)
+        return jsonify({
+            "message": "erroroo"
+        }), 500
         
     except Exception as e:
         return jsonify({"message": str(e), "status": 500}), 500
