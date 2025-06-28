@@ -226,9 +226,7 @@ def update_balance(user_id, amount, transaction_type):
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
+
 
 def set_balance(user_id, amount):
     """
@@ -291,9 +289,7 @@ def get_balance(user_id):
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
+
 
 def get_balance_email(email):
     """
@@ -347,9 +343,7 @@ def get_user_transactions(user_id):
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
+
 
 def get_order_history(user_id):
     try:
@@ -388,9 +382,7 @@ def get_order_history(user_id):
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
+
 
 def create_order(data):
     try:
@@ -475,15 +467,11 @@ def create_order(data):
             }
         })
     except Exception as e:
-        if conn:
-            conn.rollback()
         return jsonify({
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
+
 
 
 def agent_signup():
@@ -630,9 +618,7 @@ def agent_login():
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
+
 
 def check_agent_subscription():
     try:
@@ -691,9 +677,7 @@ def check_agent_subscription():
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
+
 
 
 def subscribe_agent():
@@ -837,9 +821,7 @@ def check_agent_id(agent_id):
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
+
 
 
 def get_agent_orders(agent_id):
@@ -884,9 +866,7 @@ def get_agent_orders(agent_id):
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
+
 
 def get_agent_order_details(agent_id):
     try:
@@ -929,9 +909,7 @@ def get_agent_order_details(agent_id):
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
+
 
 def get_agent_withdrawal_details(agent_id):
     try:
@@ -985,9 +963,7 @@ def get_agent_withdrawal_details(agent_id):
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
+
 
 def create_withdrawal_request(data):
     try:
@@ -1049,12 +1025,7 @@ def create_withdrawal_request(data):
         })
         
     except Exception as e:
-        if conn:
-            conn.rollback()
         return jsonify({
             "status": "error",
             "message": str(e)
         }), 500
-    finally:
-        if conn:
-            conn.close()
