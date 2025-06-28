@@ -112,7 +112,7 @@ def update_user_balance():
 
         user_id = get_user_id(email)
         
-        if not all([user_id, amount, transaction_type]):
+        if not all([email, amount, transaction_type]):
             print(f"Missing required fields: user_id, amount, and type: {user_id} {amount} {transaction_type}")
             return jsonify({
                 "message": "Missing required fields: user_id, amount, and type",
