@@ -196,6 +196,24 @@ def create_withdrawn_orders_table(connection):
         cursor.execute(sql)
         connection.commit()
 
+def create_password_reset_otps_table(connection):
+    with connection.cursor() as cursor:
+        sql = """
+        CREATE TABLE IF NOT EXISTS password_reset_otps (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(100) NOT NULL,
+            otp VARCHAR(6) NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_email (email),
+            INDEX idx_email (email),
+            INDEX idx_expires_at (expires_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        """
+        cursor.execute(sql)
+        connection.commit()
+        print("Password reset OTPs table created successfully")
+
 
 def update_order_status(connection, order_id, new_status):
     try:
@@ -224,8 +242,9 @@ def init_database(connection):
     alter_order_history_table(connection)
     create_agent_withdrawals_table(connection)
     create_withdrawn_orders_table(connection)
-    update_order_status(connection, 37, 'completing')  # Add this line
-    alter_agent_withdrawals_table(connection)  # Add this line
+    create_password_reset_otps_table(connection)  # Add this line
+    update_order_status(connection, 37, 'completing')
+    alter_agent_withdrawals_table(connection)
 
 
 

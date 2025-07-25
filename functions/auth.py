@@ -5,7 +5,9 @@ import jwt
 import os
 from dotenv import load_dotenv
 import time
-from datetime import datetime
+import random
+import string
+from datetime import datetime, timedelta
 
 load_dotenv()
 JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key-here')
@@ -88,6 +90,136 @@ def send_withdrawal_request_notification():
         mail.send(msg)
     except Exception as e:
         print(f"Error sending withdrawal notification: {str(e)}")
+
+def generate_otp():
+    """Generate a 6-digit OTP"""
+    return ''.join(random.choices(string.digits, k=6))
+
+def send_forgot_password_email(user, otp):
+    """Send forgot password email with OTP"""
+    try:
+        print("Sending forgot password email now")
+        msg = Message(
+            "Password Reset Request - PX Backend",
+            recipients=[user['email']]
+        )
+        msg.html = render_template(
+            'forgot_password.html',
+            username=user['username'],
+            otp=otp
+        )
+        mail.send(msg)
+        print("Forgot password email sent")
+    except Exception as e:
+        print(f"Error sending forgot password email: {str(e)}")
+
+def forgot_password():
+    """Send OTP for password reset"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        data = request.get_json()
+        if data is None:
+            return jsonify({"message": "Data is empty", "status": 400}), 400
+
+        email = data.get("email")
+
+        if not email:
+            return jsonify({"message": "Email is required", "status": 400}), 400
+
+        # Check if user exists
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        
+        if user is None:
+            return jsonify({"message": "User with this email does not exist", "status": 404}), 404
+        
+        # Generate OTP
+        otp = generate_otp()
+        
+        # Store OTP temporarily (expires in 10 minutes)
+        expiry_time = datetime.now() + timedelta(minutes=10)
+        
+        # Create or update OTP record
+        cur.execute("""
+            INSERT INTO password_reset_otps (email, otp, expires_at) 
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE 
+            otp = VALUES(otp), 
+            expires_at = VALUES(expires_at),
+            created_at = CURRENT_TIMESTAMP
+        """, (email, otp, expiry_time))
+        
+        conn.commit()
+        
+        # Send OTP email
+        send_forgot_password_email(user, otp)
+        
+        return jsonify({
+            "message": "OTP sent to your email successfully",
+            "status": 200
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"message": str(e), "status": 500}), 500
+    finally:
+        if conn:
+            conn.close()
+
+def reset_password():
+    """Reset password after OTP verification"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        data = request.get_json()
+        if data is None:
+            return jsonify({"message": "Data is empty", "status": 400}), 400
+
+        email = data.get("email")
+        otp = data.get("otp")
+        new_password = data.get("new_password")
+
+        if not all([email, otp, new_password]):
+            return jsonify({"message": "Email, OTP, and new password are required", "status": 400}), 400
+
+        # Verify OTP
+        cur.execute("""
+            SELECT * FROM password_reset_otps 
+            WHERE email = %s AND otp = %s AND expires_at > NOW()
+        """, (email, otp))
+        
+        otp_record = cur.fetchone()
+        
+        if otp_record is None:
+            return jsonify({"message": "Invalid or expired OTP", "status": 400}), 400
+        
+        # Check if user exists
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        
+        if user is None:
+            return jsonify({"message": "User not found", "status": 404}), 404
+        
+        # Update password
+        cur.execute("UPDATE users SET password = %s WHERE email = %s", (new_password, email))
+        
+        # Delete used OTP
+        cur.execute("DELETE FROM password_reset_otps WHERE email = %s", (email,))
+        
+        conn.commit()
+        
+        return jsonify({
+            "message": "Password reset successfully",
+            "status": 200
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"message": str(e), "status": 500}), 500
+    finally:
+        if conn:
+            conn.close()
 
 def login():
     try:

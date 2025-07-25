@@ -484,6 +484,14 @@ def createWithdrawalRequest():
 
 # Add these new admin routes after your existing routes
 
+@app.route("/auth/forgot-password", methods=["POST"])
+def forgotPassword():
+    return forgot_password()
+
+@app.route("/auth/reset-password", methods=["POST"])
+def resetPassword():
+    return reset_password()
+
 @app.route("/admin/users", methods=["GET"])
 def get_admin_users():
     try:
